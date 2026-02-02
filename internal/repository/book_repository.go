@@ -60,8 +60,8 @@ func (r *BookRepository) FindByID(ctx context.Context, id string) (*domain.Book,
 
 func (r *BookRepository) List(ctx context.Context, limit, offset int) ([]*domain.Book, error) {
 	query := `
-		SELECT id, title, author, COALESCE(cover_url, ''), COALESCE(category, ''),
-		       status, COALESCE(average_rating, 0), created_at
+		SELECT id, title, author, current_holder_id, COALESCE(cover_url, ''), COALESCE(category, ''),
+		       status, COALESCE(average_rating, 0), created_by, donated_by, created_at
 		FROM books
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
@@ -75,11 +75,14 @@ func (r *BookRepository) List(ctx context.Context, limit, offset int) ([]*domain
 	var books []*domain.Book
 	for rows.Next() {
 		b := &domain.Book{}
-		err := rows.Scan(&b.ID, &b.Title, &b.Author, &b.CoverURL, &b.Category,
-			&b.Status, &b.AverageRating, &b.CreatedAt)
+		var createdBy, donatedBy sql.NullString
+		err := rows.Scan(&b.ID, &b.Title, &b.Author, &b.CurrentHolderID, &b.CoverURL, &b.Category,
+			&b.Status, &b.AverageRating, &createdBy, &donatedBy, &b.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
+		b.CreatedBy = stringPtr(createdBy)
+		b.DonatedBy = stringPtr(donatedBy)
 		books = append(books, b)
 	}
 	return books, nil

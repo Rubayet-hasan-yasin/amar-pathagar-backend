@@ -69,7 +69,18 @@ func (h *Handler) GetByUser(c *gin.Context) {
 	response.Success(c, reviews)
 }
 
+func (h *Handler) GetByBook(c *gin.Context) {
+	bookID := c.Param("id")
+	reviews, err := h.reviewSvc.GetByBook(c.Request.Context(), bookID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, reviews)
+}
+
 func RegisterRoutes(r *gin.RouterGroup, h *Handler) {
 	r.POST("/reviews", h.Create)
 	r.GET("/users/:id/reviews", h.GetByUser)
+	r.GET("/books/:id/reviews", h.GetByBook)
 }

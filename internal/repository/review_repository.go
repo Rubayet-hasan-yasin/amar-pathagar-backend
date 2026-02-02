@@ -58,3 +58,50 @@ func (r *ReviewRepository) FindByUserID(ctx context.Context, userID string) ([]*
 	}
 	return reviews, nil
 }
+
+func (r *ReviewRepository) FindByBookID(ctx context.Context, bookID string) ([]*domain.UserReview, error) {
+	query := `SELECT ur.id, ur.reviewer_id, ur.reviewee_id, ur.book_id, ur.behavior_rating, 
+	                 ur.book_condition_rating, ur.communication_rating, ur.comment, ur.created_at,
+	                 u.id, u.username, u.full_name, u.email
+	          FROM user_reviews ur
+	          LEFT JOIN users u ON ur.reviewer_id = u.id
+	          WHERE ur.book_id = $1 
+	          ORDER BY ur.created_at DESC`
+	rows, err := r.db.QueryContext(ctx, query, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reviews []*domain.UserReview
+	for rows.Next() {
+		rev := &domain.UserReview{}
+		reviewer := &domain.User{}
+		var bookIDVal sql.NullString
+		var behaviorRating, bookConditionRating, communicationRating sql.NullInt64
+		var fullName, email sql.NullString
+
+		err := rows.Scan(&rev.ID, &rev.ReviewerID, &rev.RevieweeID, &bookIDVal,
+			&behaviorRating, &bookConditionRating, &communicationRating, &rev.Comment, &rev.CreatedAt,
+			&reviewer.ID, &reviewer.Username, &fullName, &email)
+		if err != nil {
+			return nil, err
+		}
+
+		rev.BookID = stringPtr(bookIDVal)
+		rev.BehaviorRating = intPtr(behaviorRating)
+		rev.BookConditionRating = intPtr(bookConditionRating)
+		rev.CommunicationRating = intPtr(communicationRating)
+
+		if fullName.Valid {
+			reviewer.FullName = fullName.String
+		}
+		if email.Valid {
+			reviewer.Email = email.String
+		}
+		rev.Reviewer = reviewer
+
+		reviews = append(reviews, rev)
+	}
+	return reviews, nil
+}

@@ -9,11 +9,13 @@ import (
 type Service interface {
 	Create(ctx context.Context, review *domain.UserReview) (*domain.UserReview, error)
 	GetByUser(ctx context.Context, userID string) ([]*domain.UserReview, error)
+	GetByBook(ctx context.Context, bookID string) ([]*domain.UserReview, error)
 }
 
 type ReviewRepo interface {
 	Create(ctx context.Context, review *domain.UserReview) error
 	FindByUserID(ctx context.Context, userID string) ([]*domain.UserReview, error)
+	FindByBookID(ctx context.Context, bookID string) ([]*domain.UserReview, error)
 }
 
 type SuccessScoreSvc interface {

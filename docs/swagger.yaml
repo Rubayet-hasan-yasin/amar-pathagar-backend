@@ -264,13 +264,10 @@ components:
           type: string
           format: date-time
 
-    Review:
+    UserReview:
       type: object
       properties:
         id:
-          type: string
-          format: uuid
-        book_id:
           type: string
           format: uuid
         reviewer_id:
@@ -278,11 +275,27 @@ components:
           format: uuid
         reviewer:
           $ref: '#/components/schemas/User'
-        rating:
+        reviewee_id:
+          type: string
+          format: uuid
+        reviewee:
+          $ref: '#/components/schemas/User'
+        book_id:
+          type: string
+          format: uuid
+        behavior_rating:
           type: integer
           minimum: 1
           maximum: 5
-        review_text:
+        book_condition_rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        communication_rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
           type: string
         created_at:
           type: string
@@ -1371,8 +1384,8 @@ paths:
 
   /reviews:
     post:
-      summary: Create book review
-      description: Write a review for a book
+      summary: Create user review
+      description: Write a review for another user based on book exchange experience
       tags:
         - Reviews
       security:
@@ -1384,18 +1397,34 @@ paths:
             schema:
               type: object
               required:
-                - book_id
-                - rating
+                - reviewee_id
               properties:
+                reviewee_id:
+                  type: string
+                  format: uuid
+                  description: ID of the user being reviewed
                 book_id:
                   type: string
                   format: uuid
-                rating:
+                  description: ID of the book related to this review
+                behavior_rating:
                   type: integer
                   minimum: 1
                   maximum: 5
-                review_text:
+                  description: Rating for user behavior
+                book_condition_rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: Rating for book condition
+                communication_rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: Rating for communication
+                comment:
                   type: string
+                  description: Optional review comment
       responses:
         '201':
           description: Review created successfully
@@ -1405,7 +1434,7 @@ paths:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Review'
+                    $ref: '#/components/schemas/UserReview'
         '400':
           description: Bad request
           content:
@@ -1416,7 +1445,7 @@ paths:
   /users/{id}/reviews:
     get:
       summary: Get user reviews
-      description: Get all reviews written by a user
+      description: Get all reviews received by a user
       tags:
         - Reviews
       security:
@@ -1439,7 +1468,35 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Review'
+                      $ref: '#/components/schemas/UserReview'
+
+  /books/{id}/reviews:
+    get:
+      summary: Get book reviews
+      description: Get all reviews related to a specific book
+      tags:
+        - Reviews
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of reviews for the book
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserReview'
 
   /bookmarks:
     get:

@@ -75,3 +75,12 @@ func (s *service) GetByUser(ctx context.Context, userID string) ([]*domain.UserR
 	}
 	return reviews, nil
 }
+
+func (s *service) GetByBook(ctx context.Context, bookID string) ([]*domain.UserReview, error) {
+	reviews, err := s.reviewRepo.FindByBookID(ctx, bookID)
+	if err != nil {
+		s.log.Error("failed to get reviews by book", zap.String("book_id", bookID), zap.Error(err))
+		return nil, err
+	}
+	return reviews, nil
+}
