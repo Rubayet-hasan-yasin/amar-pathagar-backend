@@ -1,9 +1,9 @@
 # Multi-stage Dockerfile for Amar Pathagar Backend
-
 # --------------------------------------------------
 # Base Stage - Common dependencies
 # --------------------------------------------------
 FROM golang:1.25-alpine AS base
+
 WORKDIR /app
 
 # Install build dependencies
@@ -41,6 +41,9 @@ CMD ["air", "-c", ".air.toml"]
 # --------------------------------------------------
 FROM base AS builder
 
+# Install goose for building
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
@@ -52,11 +55,17 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 # --------------------------------------------------
 FROM alpine:latest AS prod
 
-# Install runtime dependencies
+# Install runtime dependencies INCLUDING goose
 RUN apk add --no-cache \
     ca-certificates \
     tzdata \
     wget
+
+# Download and install goose binary
+RUN wget -O /tmp/goose.tar.gz https://github.com/pressly/goose/releases/download/v3.18.0/goose_linux_x86_64.tar.gz && \
+    tar -xzf /tmp/goose.tar.gz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/goose && \
+    rm /tmp/goose.tar.gz
 
 # Create non-root user
 RUN addgroup -g 1000 appuser && \
@@ -64,8 +73,9 @@ RUN addgroup -g 1000 appuser && \
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy binary and migrations from builder
 COPY --from=builder --chown=appuser:appuser /app/server .
+COPY --chown=appuser:appuser migrations ./migrations
 
 # Switch to non-root user
 USER appuser
@@ -78,4 +88,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
-CMD ["./server"]
+CMD ["./server", "serve-rest"]
