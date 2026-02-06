@@ -60,9 +60,8 @@ jobs:
           curl -X POST \
             -H "Authorization: token ${{ secrets.INFRA_REPO_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ secrets.INFRA_REPO_OWNER }}/${{ secrets.INFRA_REPO_NAME }}/dispatches \
-            -d '{"event_type":"deploy-backend-staging","client_payload":{"image_tag":"${{ steps.meta.outputs.version }}"}}'
-
+            https://api.github.com/repos/opskraken/nesohq-infra/dispatches \
+            -d '{"event_type":"deploy-staging"}'
       - name: 🎉 Deployment triggered
         if: success() && github.ref == 'refs/heads/main'
         run: |

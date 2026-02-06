@@ -71,6 +71,7 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appuser /app/server .
 COPY --from=builder --chown=appuser:appuser /go/bin/goose /usr/local/bin/goose
 COPY --chown=appuser:appuser migrations ./migrations
+COPY --chown=appuser:appuser docs ./docs
 
 # Switch to non-root user
 USER appuser

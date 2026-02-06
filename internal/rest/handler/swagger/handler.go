@@ -3,20 +3,40 @@ package swagger
 import (
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 )
 
 // ServeSwaggerYAML serves the swagger.yaml file
 func ServeSwaggerYAML(c *gin.Context) {
-	// Get the path to swagger.yaml
-	swaggerPath := filepath.Join("docs", "swagger.yaml")
+	// Try multiple possible paths for swagger.yaml
+	possiblePaths := []string{
+		"docs/swagger.yaml",
+		"./docs/swagger.yaml",
+		"../docs/swagger.yaml",
+		"amar-pathagar-backend/docs/swagger.yaml",
+	}
 
-	// Read the file
-	data, err := os.ReadFile(swaggerPath)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "swagger.yaml not found"})
+	var data []byte
+	var err error
+	var foundPath string
+
+	for _, swaggerPath := range possiblePaths {
+		data, err = os.ReadFile(swaggerPath)
+		if err == nil {
+			foundPath = swaggerPath
+			break
+		}
+	}
+
+	if err != nil || foundPath == "" {
+		// Get current working directory for debugging
+		wd, _ := os.Getwd()
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":             "swagger.yaml not found",
+			"working_directory": wd,
+			"tried_paths":       possiblePaths,
+		})
 		return
 	}
 
