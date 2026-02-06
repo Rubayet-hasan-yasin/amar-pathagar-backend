@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
+  args_bin = ["serve-rest"]
   bin = "./tmp/main"
   cmd = "go build -buildvcs=false -o ./tmp/main ./cmd"
   delay = 1000
