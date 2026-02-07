@@ -1,6 +1,8 @@
 package bookhandler
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/online-library/internal/book"
 	"github.com/yourusername/online-library/internal/domain"
@@ -13,6 +15,8 @@ type Handler struct {
 	bookSvc book.Service
 	log     *zap.Logger
 }
+
+const MaxBatchSize = 100
 
 func NewHandler(bookSvc book.Service, log *zap.Logger) *Handler {
 	return &Handler{bookSvc: bookSvc, log: log}
@@ -27,7 +31,7 @@ type CreateBookRequest struct {
 	Category       string   `json:"category"`
 	Tags           []string `json:"tags"`
 	Topics         []string `json:"topics"`
-	PhysicalCode   string   `json:"physical_code"`
+	PhysicalCode   string   `json:"physical_code" binding:"required"`
 	MaxReadingDays int      `json:"max_reading_days"`
 }
 
@@ -61,6 +65,56 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	created, err := h.bookSvc.Create(c.Request.Context(), book)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Created(c, created)
+}
+
+func (h *Handler) BatchCreate(c *gin.Context) {
+	var req []CreateBookRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if len(req) == 0 {
+		response.BadRequest(c, "batch request cannot be empty")
+		return
+	}
+
+	if len(req) > MaxBatchSize {
+		response.BadRequest(c, fmt.Sprintf("batch size exceeds maximum limit of %d", MaxBatchSize))
+		return
+	}
+
+	userID := middleware.GetUserID(c)
+	books := make([]*domain.Book, len(req))
+
+	for i, r := range req {
+		maxReadingDays := r.MaxReadingDays
+		if maxReadingDays <= 0 {
+			maxReadingDays = 14
+		}
+
+		books[i] = &domain.Book{
+			Title:          r.Title,
+			Author:         r.Author,
+			ISBN:           r.ISBN,
+			CoverURL:       r.CoverURL,
+			Description:    r.Description,
+			Category:       r.Category,
+			Tags:           r.Tags,
+			Topics:         r.Topics,
+			PhysicalCode:   r.PhysicalCode,
+			MaxReadingDays: maxReadingDays,
+			CreatedBy:      &userID,
+		}
+	}
+
+	created, err := h.bookSvc.BatchCreate(c.Request.Context(), books)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -213,6 +267,7 @@ func RegisterRoutes(r *gin.RouterGroup, h *Handler) {
 		books.DELETE("/:id/request", h.CancelRequest)
 		books.GET("/:id/requested", h.CheckBookRequested)
 		books.POST("/:id/return", h.ReturnBook)
+		books.POST("/batch", h.BatchCreate)
 	}
 
 	// User's book requests and history

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/lib/pq"
 	"github.com/yourusername/online-library/internal/book"
@@ -31,7 +32,13 @@ func (r *BookRepository) Create(ctx context.Context, b *domain.Book) error {
 		b.ID, b.Title, b.Author, b.ISBN, b.CoverURL, b.Description, b.Category,
 		pq.Array(b.Tags), pq.Array(b.Topics), b.PhysicalCode, b.Status, b.MaxReadingDays,
 		b.CreatedBy, b.CreatedAt, b.UpdatedAt)
-	return err
+	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return fmt.Errorf("%w: %s", domain.ErrAlreadyExists, pqErr.Detail)
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *BookRepository) FindByID(ctx context.Context, id string) (*domain.Book, error) {
@@ -387,4 +394,38 @@ func (r *BookRepository) GetBooksOnHoldByUser(ctx context.Context, userID string
 		books = append(books, b)
 	}
 	return books, nil
+}
+
+func (r *BookRepository) BatchCreate(ctx context.Context, books []*domain.Book) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO books (id, title, author, isbn, cover_url, description, category, 
+		                   tags, topics, physical_code, status, max_reading_days, created_by, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	`
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, b := range books {
+		_, err := stmt.ExecContext(ctx,
+			b.ID, b.Title, b.Author, b.ISBN, b.CoverURL, b.Description, b.Category,
+			pq.Array(b.Tags), pq.Array(b.Topics), b.PhysicalCode, b.Status, b.MaxReadingDays,
+			b.CreatedBy, b.CreatedAt, b.UpdatedAt)
+		if err != nil {
+			if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+				return fmt.Errorf("%w: %s", domain.ErrAlreadyExists, pqErr.Detail)
+			}
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

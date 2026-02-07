@@ -21,6 +21,7 @@ type Service interface {
 	ReturnBook(ctx context.Context, bookID, userID string) error
 	GetReadingHistory(ctx context.Context, userID string) ([]*domain.ReadingHistory, error)
 	GetBooksOnHold(ctx context.Context, userID string) ([]*domain.Book, error)
+	BatchCreate(ctx context.Context, books []*domain.Book) ([]*domain.Book, error)
 }
 
 // BookRepo defines the book repository interface
@@ -40,4 +41,5 @@ type BookRepo interface {
 	CompleteReadingHistory(ctx context.Context, bookID, userID string) error
 	GetReadingHistoryByUser(ctx context.Context, userID string) ([]*domain.ReadingHistory, error)
 	GetBooksOnHoldByUser(ctx context.Context, userID string) ([]*domain.Book, error)
+	BatchCreate(ctx context.Context, books []*domain.Book) error
 }

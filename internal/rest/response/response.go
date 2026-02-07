@@ -1,6 +1,8 @@
 package response
 
 import (
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,29 +31,27 @@ func Error(c *gin.Context, err error) {
 	message := "internal server error"
 
 	// Map domain errors to HTTP status codes
-	switch err {
-	case domain.ErrNotFound, domain.ErrUserNotFound:
+	switch {
+	case errors.Is(err, domain.ErrNotFound), errors.Is(err, domain.ErrUserNotFound):
 		statusCode = http.StatusNotFound
 		message = err.Error()
-	case domain.ErrInvalidCredentials, domain.ErrInvalidToken, domain.ErrTokenExpired:
+	case errors.Is(err, domain.ErrInvalidCredentials), errors.Is(err, domain.ErrInvalidToken), errors.Is(err, domain.ErrTokenExpired):
 		statusCode = http.StatusUnauthorized
 		message = err.Error()
-	case domain.ErrEmailExists, domain.ErrUsernameExists, domain.ErrAlreadyExists:
+	case errors.Is(err, domain.ErrEmailExists), errors.Is(err, domain.ErrUsernameExists), errors.Is(err, domain.ErrAlreadyExists):
 		statusCode = http.StatusConflict
 		message = err.Error()
-	case domain.ErrInvalidInput:
+	case errors.Is(err, domain.ErrInvalidInput):
 		statusCode = http.StatusBadRequest
 		message = err.Error()
-	case domain.ErrForbidden:
+	case errors.Is(err, domain.ErrForbidden):
 		statusCode = http.StatusForbidden
 		message = err.Error()
-	case domain.ErrBookNotAvailable, domain.ErrBookAlreadyBorrowed:
+	case errors.Is(err, domain.ErrBookNotAvailable), errors.Is(err, domain.ErrBookAlreadyBorrowed):
 		statusCode = http.StatusBadRequest
 		message = err.Error()
 	default:
-		if err != nil {
-			message = err.Error()
-		}
+		log.Printf("Internal Server Error: %v", err)
 	}
 
 	c.JSON(statusCode, gin.H{
